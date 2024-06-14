@@ -27,14 +27,26 @@ def render_set(model_path, name, iteration, views, gaussians, pipeline, backgrou
 
     makedirs(render_path, exist_ok=True)
     makedirs(gts_path, exist_ok=True)
-
+    el_time = 0
+    nv = 0
     for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
-        rendering = render(view, gaussians, pipeline, background)["render"]
+        rendering = render(view, gaussians, pipeline, background)
+        elapsed = rendering['elapsed']
+        rendering = rendering['render']
+        el_time += elapsed
+        nv += 1
         gt = view.original_image[0:3, :, :]
         torchvision.utils.save_image(rendering, os.path.join(render_path, '{0:05d}'.format(idx) + ".png"))
         torchvision.utils.save_image(gt, os.path.join(gts_path, '{0:05d}'.format(idx) + ".png"))
 
+    print(el_time, nv)
+    avg_time = el_time/nv if nv != 0 else 0
+    print(f'Total time: {(el_time/1e3):.1f} s; avg per im: {(avg_time):.1f} ms')
+
+
 def render_sets(dataset : ModelParams, iteration : int, pipeline : PipelineParams, skip_train : bool, skip_test : bool):
+    print(dataset.__dict__)
+    print(pipeline.__dict__)
     with torch.no_grad():
         gaussians = GaussianModel(dataset.sh_degree)
         scene = Scene(dataset, gaussians, load_iteration=iteration, shuffle=False)
